@@ -1,0 +1,96 @@
+SELECT * FROM TAB;
+SELECT * FROM DICT;
+SELECT * FROM user_indexes;
+
+-- 사용자 정의 함수
+--함수를 만드는 방법 - CREATE FUNCTION
+-- 매개 변수 순서 주의
+--함수는 계속 수정 할 수 있기 때문에 OR REPLACE
+CREATE OR REPLACE FUNCTION fnSum(n IN NUMBER) -- HEADER
+RETURN NUMBER
+IS --실제 내용
+    s NUMBER:=0; --초기값(:=은 ==과 같은 뜻이다.)
+    BEGIN
+        FOR i IN 1..n LOOP s:=s+i; END LOOP;
+        RETURN s;
+        --for(int i = 0; i< n i++)
+    END;
+/
+SELECT fnSum(100) FROM dual;
+
+--주민번호 입력 성별 조회
+
+CREATE OR REPLACE FUNCTION fnGender(sn IN VARCHAR) -- HEADER
+RETURN VARCHAR
+IS --실제 내용
+    -- 변수 선언
+    g VARCHAR(6):='여자';--초기화
+    BEGIN
+        IF LENGTH(SN) != 13 THEN RAISE_APPLICATION_ERROR(-20000, '주민번호는 13자리 입니다.'); END IF;
+        IF MOD(SUBSTR(SN,7,1),2)=1 THEN g:='남자'; END IF;--1,3 이면 남자 2,4면 여자 
+        RETURN g;
+    END;
+/
+SELECT fngender('0107104000000') FROM DUAL;--따옴표로 묶어 주저야 하는 이유는 13자리인데 처음 글자가 0이면 자동적으로 생략 되기 떼ㅐ문에 묶어 주어야 한다.
+
+
+
+CREATE OR REPLACE FUNCTION fnBirth(sn IN VARCHAR) -- HEADER
+RETURN DATE
+IS --실제 내용
+    BEGIN
+        IF LENGTH(SN) != 13 THEN RAISE_APPLICATION_ERROR(-20000, '주민번호는 13자리 입니다.'); END IF;
+        RETURN TO_DATE(SUBSTR(SN, 1, 6), 'RRMMDD');
+    END;
+/
+SELECT fnBirth('0107104000000') FROM DUAL;--따옴표로 묶어 주저야 하는 이유는 13자리인데 처음 글자가 0이면 자동적으로 생략 되기 떼ㅐ문에 묶어 주어야 한다.
+
+CREATE OR REPLACE FUNCTION fnAge(sn IN VARCHAR) -- HEADER
+RETURN NUMBER
+IS --실제 내용
+    BEGIN
+        IF LENGTH(SN) != 13 THEN RAISE_APPLICATION_ERROR(-20000, '주민번호는 13자리 입니다.'); END IF;
+        RETURN TO_NUMBER(TO_CHAR(SYSDATE, 'RRRR') - TO_CHAR(fnBirth(SN), 'RRRR'));
+    END;
+/
+SELECT fnAge('0107104000000') FROM DUAL;
+
+--트리거
+CREATE TABLE TR_MAIN( ID VARCHAR(1), VALUE VARCHAR(10));
+CREATE TABLE TR_SUB( ID VARCHAR(1), VALUE VARCHAR(10));
+SELECT * FROM TR_MAIN;
+SELECT * FROM TR_SUB;
+CREATE OR REPLACE TRIGGER TR_MAIN_SUB
+    AFTER INSERT ON TR_MAIN  --TR_MAIN에 INSERT가 끝난 후에
+    FOR EACH ROW -- 매 행마다 확인
+    BEGIN--INSERT 가 일어나면 실행 할 문
+        INSERT INTO TR_SUB(ID, VALUE) VALUES (:NEW.ID, :NEW.VALUE);--지금 들어온 데이터를 TR_SUB에 넣어야 하기 때문에 :NEW, 이전에 들어온 것을 의미하는 것은 :OLD
+    END;
+/
+INSERT INTO TR_MAIN(ID, VALUE) VALUES ('1', 'TEST');
+INSERT INTO TR_MAIN(ID, VALUE) VALUES ('2', 'AAAA');
+
+--트리거 강좌별 수강 인원 체크
+CREATE TABLE STDTBL( NAME VARCHAR(20) NOT NULL, SUBJECT VARCHAR(10));
+CREATE TABLE SUBTBL( SUBJECT VARCHAR(10), CNT NUMBER(3) DEFAULT 0);--CNT초기값을 0으로 주었다.
+SELECT * FROM STDTBL;
+SELECT * FROM SUBTBL;
+INSERT INTO SUBTBL(SUBJECT) VALUES ('컴퓨터');
+INSERT INTO SUBTBL(SUBJECT) VALUES ('디자인');
+INSERT INTO SUBTBL(SUBJECT) VALUES ('경영');--DEFALUT가 있기 때문에 CNT는 삽입안 해주어도 된다.
+
+CREATE OR REPLACE TRIGGER SUB_TRG
+    AFTER INSERT ON STDTBL  --TR_MAIN에 INSERT가 끝난 후에
+    FOR EACH ROW -- 매 행마다 확인
+    BEGIN--INSERT 가 일어나면 실행 할 문
+        DBMS_OUTPUT.PUT_line('학생이 추가되었습니다.');-- 메시지 띄우는 방법
+        UPDATE SUBTBL SET CNT = CNT + 1 WHERE SUBJECT = :NEW.SUBJECT;
+    END;
+/
+SET SERVEROUTPUT ON;--메시지를 띄우기 위해서 실행 시켜야 됌
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('강아지','컴퓨터');
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('고양이','컴퓨터');
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('망아지','디자인');
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('송아지','경영');
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('병아리','경영');
+INSERT INTO STDTBL(NAME, SUBJECT) VALUES ('aa','경영');

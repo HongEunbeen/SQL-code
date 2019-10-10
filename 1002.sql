@@ -72,10 +72,16 @@ ORDER BY 1;
     GROUP BY manager_id
     ORDER BY 1;
 
-
+--Steven이 관리하지 않는 사람들 찾기1
 SELECT man.first_name 관리자명, COUNT(*), man.manager_id
 FROM employees emp, employees man 
 WHERE emp.manager_id=man.employee_id AND MAN.MANAGER_ID NOT IN (SELECT EMPLOYEE_ID FROM employees WHERE manager_id IS NULL)
+GROUP BY MAN.first_name,man.manager_id;
+
+--Steven이 관리하지 않는 사람들 찾기2
+SELECT man.first_name 관리자명, COUNT(*), man.manager_id
+FROM employees emp, employees man 
+WHERE emp.manager_id=man.employee_id AND MAN.MANAGER_ID NOT IN (SELECT EMPLOYEE_ID FROM employees WHERE FIRST_NAME = 'Steven')
 GROUP BY MAN.first_name,man.manager_id;
 
 SELECT * FROM employees
